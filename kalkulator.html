@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator Sederhana</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+        <h2 class="text-2xl font-bold text-gray-800 mb-6 text-center">Kalkulator Sederhana</h2>
+        
+        <div class="space-y-4">
+            <div>
+                <label for="angka1" class="block text-sm font-medium text-gray-700">Angka Pertama :</label>
+                <input type="text" id="angka1" required 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm 
+                    focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>
+
+            <div>
+                <label for="angka2" class="block text-sm font-medium text-gray-700">Angka Kedua :</label>
+                <input type="text" id="angka2" required 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm 
+                    focus:border-blue-500 focus:ring-blue-500 p-2 border">
+            </div>      
+
+            <div>
+                <label for="operasi" class="block text-sm font-medium text-gray-700">Pilih Operasi :</label>
+                <select id="operasi" 
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm 
+                    focus:border-blue-500 focus:ring-blue-500 p-2 border appearance-none 
+                    bg-transparent relative">
+                    <option value="tambah">Penjumlahan (+)</option>
+                    <option value="kurang">Pengurangan (-)</option>
+                    <option value="kali">Perkalian (×)</option>
+                    <option value="bagi">Pembagian (÷)</option>
+                </select>
+            </div>
+
+            <button onclick="hitung()" 
+                class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 
+                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
+                transition-colors duration-200">
+                Hitung
+            </button>
+            <div class="mt-6 text-center p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg shadow-sm">
+                <span id="hasil" class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">0</span>
+            </div>
+        </div>
+        <div class="mt-6">
+            <div class="flex justify-between items-center mb-2">
+                <span id="timer" class="text-sm text-gray-500"></span>
+                <button onclick="kelolaRiwayat('hapus')" 
+                    class="text-sm px-3 py-1 text-red-600 hover:bg-red-50 rounded-md transition-colors">
+                    Hapus Riwayat
+                </button>
+            </div>
+            <div id="historyContainer" class="max-h-40 overflow-y-auto space-y-2 p-2 border rounded-lg">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function kelolaRiwayat(aksi, data = null) {
+            const WAKTU_RESET = 5*60*1000; // 5 menit
+            const MAX_HISTORY = 3; 
+            const wadah = document.getElementById('historyContainer');
+            const timer = document.getElementById('timer');
+            
+            switch(aksi) {
+                case 'mulai':
+                    // Cek apakah ada waktu selesai tersimpan
+                    let waktuSelesai = localStorage.getItem('waktuSelesai');
+                    const sekarang = new Date().getTime();
+                    
+                    // Jika tidak ada atau sudah lewat, buat yang baru
+                    if (!waktuSelesai || sekarang >= waktuSelesai) {
+                        waktuSelesai = sekarang + WAKTU_RESET;
+                        localStorage.setItem('waktuSelesai', waktuSelesai);
+                    }
+                    
+                    // Tampilkan riwayat yang ada
+                    const riwayatTersimpan = JSON.parse(localStorage.getItem('riwayat') || '[]');
+                    wadah.innerHTML = riwayatTersimpan
+                        .map(item => `<div class="p-2 bg-gray-50 rounded text-sm border border-gray-100 hover:bg-gray-100 transition-colors">
+                            ${item.perhitungan}<br>
+                            <span class="text-xs text-gray-500">${item.waktu}</span>
+                        </div>`)
+                        .join('');
+                    
+                    // Update timer
+                    const timerInterval = setInterval(() => {
+                        const sisaWaktu = Math.max(0, waktuSelesai - new Date().getTime());
+                        if (sisaWaktu <= 0) {
+                            localStorage.removeItem('riwayat');
+                            wadah.innerHTML = '';
+                            localStorage.setItem('waktuSelesai', new Date().getTime() + WAKTU_RESET);
+                            clearInterval(timerInterval);
+                            kelolaRiwayat('mulai');
+                            return;
+                        }
+                        
+                        const menit = Math.floor(sisaWaktu / 60000);
+                        const detik = Math.floor((sisaWaktu % 60000) / 1000);
+                        timer.textContent = `Auto Reset ${menit}:${detik.toString().padStart(2, '0')}`;
+                    }, 1000);
+                    break;
+
+                case 'tambah':
+                    if (!data) return;
+                    let riwayat = JSON.parse(localStorage.getItem('riwayat') || '[]');
+                    
+                    // Tambah waktu ke riwayat
+                    const itemBaru = {
+                        perhitungan: data,
+                        waktu: new Date().toLocaleTimeString()
+                    };
+                    
+                    riwayat.unshift(itemBaru);
+                    
+                    // Batasi jumlah riwayat
+                    if (riwayat.length > MAX_HISTORY) {
+                        riwayat = riwayat.slice(0, MAX_HISTORY);
+                    }
+                    
+                    localStorage.setItem('riwayat', JSON.stringify(riwayat));
+                    wadah.innerHTML = riwayat
+                        .map(item => `<div class="p-2 bg-gray-50 rounded text-sm border border-gray-100 hover:bg-gray-100 transition-colors">
+                            ${item.perhitungan}<br>
+                            <span class="text-xs text-gray-500">${item.waktu}</span>
+                        </div>`)
+                        .join('');
+                    break;
+
+                case 'hapus':
+                    localStorage.removeItem('riwayat');
+                    wadah.innerHTML = '';
+                    break;
+            }
+        }
+        // Inisialisasi
+        document.addEventListener('DOMContentLoaded', () => kelolaRiwayat('mulai'));
+        function hitung() {
+            let angka1Input = document.getElementById('angka1').value;
+            let angka2Input = document.getElementById('angka2').value;
+            const operasi = document.getElementById('operasi').value;
+
+            // Validasi input kosong
+            if (angka1Input === '' || angka2Input === '') {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Oops...',
+                    text: 'Mohon isi kedua angka !'
+                });
+                return;
+            }
+            
+            // Mengganti koma dengan titik
+            angka1Input = angka1Input.replace(',', '.');
+            angka2Input = angka2Input.replace(',', '.');
+            if (isNaN(angka1Input) || isNaN(angka2Input)) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Input Tidak Valid',
+                    text: 'Mohon masukkan angka yang valid !'
+                });
+                return;
+            }
+            // const numberRegex = /^-?\d*\.?\d+$/;
+            // if (!numberRegex.test(angka1Input) || !numberRegex.test(angka2Input)) {
+            //     Swal.fire({
+            //         icon: 'error',  
+            //         title: 'Input Tidak Valid',
+            //         text: 'Mohon masukkan angka yang valid!'
+            //     });
+            //     return;
+            // } 
+
+            const angka1 = parseFloat(angka1Input);
+            const angka2 = parseFloat(angka2Input);
+            let hasil = 0;
+
+            switch(operasi) {
+                case 'tambah':
+                    hasil = angka1 + angka2;
+                    break;
+                case 'kurang':
+                    hasil = angka1 - angka2;
+                    break;
+                case 'kali':
+                    hasil = angka1 * angka2;
+                    break;
+                case 'bagi':
+                    if(angka2 === 0) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: 'Tidak bisa membagi dengan nol!'
+                        });
+                        return;
+                    }
+                    hasil = angka1 / angka2;
+                    break;
+                default:
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Operasi tidak valid!'
+                    });
+                    return;
+            }
+            
+            let operatorSymbol = '';
+            switch(operasi) {
+                case 'tambah': operatorSymbol = '+'; break;
+                case 'kurang': operatorSymbol = '-'; break;
+                case 'kali': operatorSymbol = '×'; break;
+                case 'bagi': operatorSymbol = '÷'; break;
+            }
+
+            const TextRiwayat = `${angka1} ${operatorSymbol} ${angka2} = ${hasil.toFixed(2)}`;
+            kelolaRiwayat('tambah', TextRiwayat);
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Hasil Perhitungan',
+                text: `Hasil: ${hasil.toFixed(2)}`
+            });
+            document.getElementById('hasil').textContent = hasil;
+        }
+    </script>
+</body>
+</html>
